@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">用药提醒</string>
+    <string name="alarm_channel_name">用药闹钟</string>
+    <string name="alarm_channel_description">按时播放用药语音并显示闹钟提醒</string>
+    <string name="fallback_channel_name">用药提醒备用铃声</string>
+    <string name="fallback_channel_description">语音无法在后台启动时，用系统闹钟铃声兜底提醒</string>
+</resources>

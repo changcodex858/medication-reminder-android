@@ -1,0 +1,13 @@
+<resources>
+    <style name="Theme.MedicationReminder" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#C45B43</item>
+        <item name="android:navigationBarColor">#F7F5F1</item>
+        <item name="android:statusBarColor">#F7F5F1</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Theme.MedicationReminder.Alarm" parent="Theme.MedicationReminder">
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+</resources>
