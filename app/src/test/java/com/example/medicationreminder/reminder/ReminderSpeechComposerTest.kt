@@ -5,6 +5,7 @@ import com.example.medicationreminder.domain.DoseStatus
 import com.example.medicationreminder.domain.ReminderVoiceStyle
 import com.example.medicationreminder.domain.UserPreferences
 import java.time.Instant
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -78,6 +79,52 @@ class ReminderSpeechComposerTest {
             assertFalse("威胁" in message)
             assertFalse("危险" in message)
         }
+    }
+
+    @Test
+    fun `speech announces local reminder time and elapsed time since last confirmed dose`() {
+        val item = occurrence(
+            medicationName = "阿司匹林",
+            doseAmount = "一",
+            doseUnit = "片",
+            route = "口服",
+            instructions = "随餐服用",
+            foodRestrictions = "不要饮酒",
+        )
+        val remindedAt = Instant.parse("2026-09-14T01:35:00Z")
+
+        val speech = ReminderSpeechComposer.compose(
+            items = listOf(item),
+            remindedAt = remindedAt,
+            lastTakenAtByMedication = mapOf(
+                item.medicationId to remindedAt.minusSeconds(9 * 60 * 60L + 30 * 60L),
+            ),
+            zoneId = ZoneId.of("Asia/Shanghai"),
+        )
+
+        assertTrue("现在时间是上午9点35分。" in speech)
+        assertTrue("距离上次服用已经过去9小时30分钟。" in speech)
+    }
+
+    @Test
+    fun `speech clearly explains when no previous taken record exists`() {
+        val speech = ReminderSpeechComposer.compose(
+            items = listOf(
+                occurrence(
+                    medicationName = "阿司匹林",
+                    doseAmount = "一",
+                    doseUnit = "片",
+                    route = "口服",
+                    instructions = "随餐服用",
+                    foodRestrictions = "不要饮酒",
+                )
+            ),
+            remindedAt = Instant.parse("2026-09-14T04:00:00Z"),
+            zoneId = ZoneId.of("Asia/Shanghai"),
+        )
+
+        assertTrue("现在时间是中午12点整。" in speech)
+        assertTrue("应用中还没有找到这项药品的上次已服记录。" in speech)
     }
 
     private fun occurrence(

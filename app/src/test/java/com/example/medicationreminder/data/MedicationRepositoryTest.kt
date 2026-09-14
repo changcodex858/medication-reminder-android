@@ -226,6 +226,31 @@ class MedicationRepositoryTest {
         assertEquals(DoseStatus.RINGING, repository.getOccurrences(listOf(eventId)).single().status)
     }
 
+    @Test
+    fun `last taken lookup returns the latest confirmed dose for each medication`() = runTest {
+        val firstDueAt = Instant.parse("2026-09-08T00:00:00Z")
+        val medicationId = repository.saveMedication(draft())
+        repository.ensureNextEvents(firstDueAt.minusSeconds(1), shanghai)
+        val firstEventId = repository.claimDueEvents(firstDueAt).single().eventId
+        val confirmedAt = firstDueAt.plusSeconds(5 * 60L)
+        repository.markTaken(listOf(firstEventId), confirmedAt)
+        repository.ensureNextEvents(firstDueAt, shanghai)
+
+        assertEquals(
+            mapOf(medicationId to confirmedAt),
+            repository.lastTakenAtByMedication(
+                medicationIds = listOf(medicationId, medicationId, 999L),
+                before = Instant.parse("2026-09-09T00:00:00Z"),
+            ),
+        )
+        assertTrue(
+            repository.lastTakenAtByMedication(
+                medicationIds = listOf(medicationId),
+                before = confirmedAt,
+            ).isEmpty()
+        )
+    }
+
     private fun draft() = MedicationDraft(
         name = "阿司匹林",
         doseAmount = "1",

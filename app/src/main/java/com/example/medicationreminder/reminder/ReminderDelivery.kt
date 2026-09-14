@@ -16,8 +16,18 @@ object ReminderDelivery {
         if (occurrences.isEmpty()) return true
 
         val graph = context.appGraph
+        val remindedAt = Instant.now()
         val style = graph.preferencesRepository.preferences.first().voiceStyle
-        val message = ReminderSpeechComposer.compose(occurrences, style)
+        val lastTakenAtByMedication = graph.medicationRepository.lastTakenAtByMedication(
+            medicationIds = occurrences.map { it.medicationId },
+            before = remindedAt,
+        )
+        val message = ReminderSpeechComposer.compose(
+            items = occurrences,
+            style = style,
+            remindedAt = remindedAt,
+            lastTakenAtByMedication = lastTakenAtByMedication,
+        )
         if (allowBackgroundVoice) {
             try {
                 AlarmPlaybackService.start(context, occurrences, message)

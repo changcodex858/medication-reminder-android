@@ -109,3 +109,8 @@ data class DoseEventDetailsRow(
     val actedAt: Long?,
     val snoozedUntil: Long?,
 )
+
+data class MedicationLastTakenRow(
+    val medicationId: Long,
+    val actedAt: Long,
+)

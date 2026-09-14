@@ -151,6 +151,18 @@ class MedicationRepository(private val database: AppDatabase) {
     suspend fun getRingingOccurrences(): List<DoseOccurrence> =
         eventDao.getRingingDetails().map { it.toDomain() }
 
+    suspend fun lastTakenAtByMedication(
+        medicationIds: Collection<Long>,
+        before: Instant,
+    ): Map<Long, Instant> {
+        val distinctIds = medicationIds.distinct()
+        if (distinctIds.isEmpty()) return emptyMap()
+        return eventDao.findLastTakenByMedication(
+            medicationIds = distinctIds,
+            beforeExclusive = before.toEpochMilli(),
+        ).associate { row -> row.medicationId to Instant.ofEpochMilli(row.actedAt) }
+    }
+
     suspend fun retryDelivery(ids: List<Long>, retryAt: Instant) {
         if (ids.isNotEmpty()) eventDao.requeueRinging(ids, retryAt.toEpochMilli())
     }

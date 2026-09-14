@@ -19,6 +19,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.app.ServiceCompat
 import com.example.medicationreminder.appGraph
 import com.example.medicationreminder.domain.DoseOccurrence
+import com.example.medicationreminder.domain.ReminderVoiceStyle
+import java.time.Instant
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,7 @@ class AlarmPlaybackService : Service() {
     private var speechText = ""
     private var repeatIntervalMillis = 60_000L
     private var speechVolume = 0.78f
+    private var activeVoiceStyle: ReminderVoiceStyle? = null
     private var stopped = false
     private var requestGeneration = 0L
     private var initializationTimeout: Runnable? = null
@@ -65,6 +68,7 @@ class AlarmPlaybackService : Service() {
             speechVolume = preferences.speechVolume
 
             if (isTest) {
+                activeVoiceStyle = null
                 speechText = ReminderSpeechComposer.testMessage(preferences.voiceStyle)
                 promoteToForeground(ReminderNotifications.test(this@AlarmPlaybackService, speechText))
                 initializeSpeech(preferences.speechRate, preferences.speechPitch, generation)
@@ -77,7 +81,8 @@ class AlarmPlaybackService : Service() {
                     stopPlaybackAndSelf()
                     return@launch
                 }
-                speechText = ReminderSpeechComposer.compose(occurrences, preferences.voiceStyle)
+                activeVoiceStyle = preferences.voiceStyle
+                speechText = composeReminderSpeech(occurrences, preferences.voiceStyle)
                 promoteToForeground(
                     ReminderNotifications.reminder(this@AlarmPlaybackService, occurrences, speechText)
                 )
@@ -176,6 +181,46 @@ class AlarmPlaybackService : Service() {
     }
 
     private fun speak(generation: Long) {
+        if (generation != requestGeneration || stopped || speechText.isBlank()) return
+        val style = activeVoiceStyle
+        if (style == null) {
+            speakPreparedText(generation)
+            return
+        }
+
+        serviceScope.launch {
+            val occurrences = appGraph.medicationRepository.getRingingOccurrences()
+            if (generation != requestGeneration || stopped) return@launch
+            if (occurrences.isEmpty()) {
+                stopPlaybackAndSelf()
+                return@launch
+            }
+            speechText = composeReminderSpeech(occurrences, style)
+            promoteToForeground(
+                ReminderNotifications.reminder(this@AlarmPlaybackService, occurrences, speechText)
+            )
+            speakPreparedText(generation)
+        }
+    }
+
+    private suspend fun composeReminderSpeech(
+        occurrences: List<DoseOccurrence>,
+        style: ReminderVoiceStyle,
+    ): String {
+        val remindedAt = Instant.now()
+        val lastTakenAtByMedication = appGraph.medicationRepository.lastTakenAtByMedication(
+            medicationIds = occurrences.map { it.medicationId },
+            before = remindedAt,
+        )
+        return ReminderSpeechComposer.compose(
+            items = occurrences,
+            style = style,
+            remindedAt = remindedAt,
+            lastTakenAtByMedication = lastTakenAtByMedication,
+        )
+    }
+
+    private fun speakPreparedText(generation: Long) {
         if (generation != requestGeneration || stopped || speechText.isBlank()) return
         val params = Bundle().apply {
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, speechVolume)

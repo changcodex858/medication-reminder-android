@@ -144,6 +144,22 @@ interface DoseEventDao {
 
     @Query(
         """
+        SELECT medicationId, MAX(actedAt) AS actedAt
+        FROM dose_events
+        WHERE medicationId IN (:medicationIds)
+          AND status = 'TAKEN'
+          AND actedAt IS NOT NULL
+          AND actedAt < :beforeExclusive
+        GROUP BY medicationId
+        """
+    )
+    suspend fun findLastTakenByMedication(
+        medicationIds: List<Long>,
+        beforeExclusive: Long,
+    ): List<MedicationLastTakenRow>
+
+    @Query(
+        """
         SELECT e.id AS eventId, e.scheduleId, e.medicationId,
                e.medicationName, e.doseAmount, e.doseUnit,
                e.route, e.instructions, e.foodRestrictions,
