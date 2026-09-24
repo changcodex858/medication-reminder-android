@@ -20,6 +20,7 @@ import com.example.medicationreminder.domain.MedicationDraft
 import com.example.medicationreminder.domain.MedicationPlan
 import com.example.medicationreminder.domain.ReminderVoiceStyle
 import com.example.medicationreminder.domain.UserPreferences
+import com.example.medicationreminder.domain.Zodiac
 import com.example.medicationreminder.reminder.AlarmCoordinator
 import com.example.medicationreminder.reminder.AlarmPlaybackService
 import com.example.medicationreminder.reminder.ReminderNotifications
@@ -187,6 +188,13 @@ class AppViewModel(
 
     fun setSnoozeMinutes(value: Int) {
         viewModelScope.launch { preferencesRepository.setDefaultSnoozeMinutes(value) }
+    }
+
+    fun setZodiacCover(id: Long, zodiac: Zodiac) {
+        viewModelScope.launch {
+            runCatching { preferencesRepository.setZodiacCover(id, zodiac) }
+                .onFailure { _message.value = "卡面未保存，请重试" }
+        }
     }
 
     fun setRepeatSeconds(value: Int) {

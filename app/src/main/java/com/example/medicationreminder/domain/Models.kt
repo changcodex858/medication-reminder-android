@@ -93,6 +93,7 @@ data class DoseOccurrence(
 }
 
 data class UserPreferences(
+    val zodiacCovers: Map<Long, String> = emptyMap(),
     val defaultSnoozeMinutes: Int = 10,
     val repeatIntervalSeconds: Int = 60,
     val voiceStyle: ReminderVoiceStyle = ReminderVoiceStyle.default,

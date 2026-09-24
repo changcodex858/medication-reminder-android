@@ -228,13 +228,7 @@ fun MedicationReminderRoot(viewModel: AppViewModel) {
     }
 
     Scaffold(
-        modifier = Modifier.background(
-            Brush.verticalGradient(
-                0f to MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.46f),
-                0.26f to MaterialTheme.colorScheme.background,
-                1f to MaterialTheme.colorScheme.background,
-            )
-        ),
+        modifier = Modifier,
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
@@ -363,6 +357,8 @@ fun MedicationReminderRoot(viewModel: AppViewModel) {
             )
             MainTab.MEDICATIONS -> MedicationListScreen(
                 plans = plans.filter { it.enabled },
+                zodiacCovers = preferences.zodiacCovers,
+                onZodiacChanged = viewModel::setZodiacCover,
                 modifier = Modifier.padding(padding),
                 onEdit = {
                     selectedOccurrenceId = null
@@ -994,15 +990,7 @@ private fun DoseDetailScreen(
     }
 
     Scaffold(
-        modifier = Modifier.background(
-            Brush.verticalGradient(
-                listOf(
-                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.52f),
-                    MaterialTheme.colorScheme.background,
-                    MaterialTheme.colorScheme.background,
-                )
-            )
-        ),
+        modifier = Modifier,
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
@@ -1445,6 +1433,8 @@ private data class StatusStyle(
 @Composable
 private fun MedicationListScreen(
     plans: List<MedicationPlan>,
+    zodiacCovers: Map<Long, String>,
+    onZodiacChanged: (Long, com.example.medicationreminder.domain.Zodiac) -> Unit,
     modifier: Modifier = Modifier,
     onEdit: (Long) -> Unit,
     onArchive: (Long) -> Unit,
@@ -1473,9 +1463,13 @@ private fun MedicationListScreen(
                     ),
                 onClick = { onEdit(plan.id) },
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
                 shape = MaterialTheme.shapes.large,
             ) {
+                ZodiacCardCover(
+                    zodiac = com.example.medicationreminder.domain.Zodiac.fromId(zodiacCovers[plan.id]),
+                    onSelected = { onZodiacChanged(plan.id, it) },
+                )
                 Column(
                     modifier = Modifier.padding(19.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -1655,7 +1649,7 @@ private fun MedicationPlanOverview(planCount: Int) {
                 )
                 Text(
                     if (planCount == 0) "添加第一项计划，按时获得提醒"
-                    else "计划已保存在本机；请在设置中完成后台真实测试",
+                    else "十二生肖，陪你照顾每一天 · 点击卡面更换伙伴",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1754,15 +1748,7 @@ private fun MedicationEditorScreen(
     }
 
     Scaffold(
-        modifier = Modifier.background(
-            Brush.verticalGradient(
-                listOf(
-                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f),
-                    MaterialTheme.colorScheme.background,
-                    MaterialTheme.colorScheme.background,
-                )
-            )
-        ),
+        modifier = Modifier,
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(

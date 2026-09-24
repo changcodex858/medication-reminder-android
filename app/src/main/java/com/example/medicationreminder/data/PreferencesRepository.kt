@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.medicationreminder.domain.ReminderVoiceStyle
 import com.example.medicationreminder.domain.UserPreferences
+import com.example.medicationreminder.domain.Zodiac
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -26,6 +27,11 @@ class PreferencesRepository(private val context: Context) {
             ReminderVoiceStyle.default
         }
         UserPreferences(
+            zodiacCovers = values.asMap().mapNotNull { (key, value) ->
+                key.name.removePrefix("zodiac_cover_").toLongOrNull()
+                    ?.takeIf { key.name.startsWith("zodiac_cover_") }
+                    ?.let { it to value.toString() }
+            }.toMap(),
             defaultSnoozeMinutes = values[SNOOZE_MINUTES] ?: defaults.defaultSnoozeMinutes,
             repeatIntervalSeconds = values[REPEAT_SECONDS] ?: defaults.repeatIntervalSeconds,
             voiceStyle = style,
@@ -37,6 +43,12 @@ class PreferencesRepository(private val context: Context) {
 
     suspend fun setDefaultSnoozeMinutes(value: Int) {
         context.medicationPreferences.edit { it[SNOOZE_MINUTES] = value.coerceIn(5, 60) }
+    }
+
+    suspend fun setZodiacCover(medicationId: Long, zodiac: Zodiac) {
+        context.medicationPreferences.edit {
+            it[stringPreferencesKey("zodiac_cover_$medicationId")] = zodiac.name
+        }
     }
 
     suspend fun setRepeatIntervalSeconds(value: Int) {

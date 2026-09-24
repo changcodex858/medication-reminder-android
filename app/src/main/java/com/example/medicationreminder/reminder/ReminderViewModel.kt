@@ -37,17 +37,24 @@ class ReminderViewModel(
         reload()
     }
 
-    fun markTaken(id: Long) = resolve(id) { repository.markTaken(listOf(id)) }
+    fun markTaken(id: Long) = resolve(id) {
+        if (repository.markTaken(listOf(id))) {
+            val name = _state.value.occurrences.firstOrNull { it.eventId == id }?.medicationName.orEmpty()
+            "好的，已记录${name}本次已经服用。"
+        } else null
+    }
 
-    fun markSkipped(id: Long) = resolve(id) { repository.markSkipped(listOf(id)) }
+    fun markSkipped(id: Long) = resolve(id) {
+        if (repository.markSkipped(listOf(id))) "已记录跳过本次用药。" else null
+    }
 
     fun snooze(id: Long) = resolve(id) {
         val minutes = preferencesRepository.preferences.first().defaultSnoozeMinutes
-        repository.snooze(listOf(id), minutes)
+        if (repository.snooze(listOf(id), minutes)) "好的，休息一下，我会在${minutes}分钟后再次提醒你。" else null
     }
 
-    private fun resolve(id: Long, action: suspend () -> Boolean) {
-        if (id in _state.value.resolvingIds) return
+    private fun resolve(id: Long, action: suspend () -> String?) {
+        if (_state.value.resolvingIds.isNotEmpty()) return
         _state.update {
             it.copy(
                 resolvingIds = it.resolvingIds + id,
@@ -56,16 +63,21 @@ class ReminderViewModel(
         }
         viewModelScope.launch {
             var changed = false
+            var feedback: String? = null
             var errorMessage: String? = null
             try {
-                changed = action()
+                feedback = action()
+                changed = feedback != null
                 coordinator.synchronize()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 errorMessage = "本次操作没有完成，请检查后重试"
             } finally {
-                AlarmPlaybackService.refresh(applicationContext)
+                runCatching {
+                    if (changed) AlarmPlaybackService.confirmAction(applicationContext, feedback.orEmpty())
+                    else AlarmPlaybackService.refresh(applicationContext)
+                }
                 if (changed) {
                     _state.update { old ->
                         val remaining = old.occurrences.filterNot { it.eventId == id }

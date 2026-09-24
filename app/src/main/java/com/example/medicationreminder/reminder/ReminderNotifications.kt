@@ -127,6 +127,10 @@ object ReminderNotifications {
             .build()
     }
 
+    fun confirmation(context: Context, message: String): Notification = baseBuilder(
+        context, VOICE_CHANNEL_ID, "操作已确认", message,
+    ).build()
+
     fun loading(context: Context, isTest: Boolean): Notification = baseBuilder(
         context = context,
         channelId = VOICE_CHANNEL_ID,

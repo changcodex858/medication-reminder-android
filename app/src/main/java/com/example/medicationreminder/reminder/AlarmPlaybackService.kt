@@ -42,6 +42,7 @@ class AlarmPlaybackService : Service() {
     private var stopped = false
     private var requestGeneration = 0L
     private var initializationTimeout: Runnable? = null
+    private var actionFeedback = false
 
     override fun onCreate() {
         super.onCreate()
@@ -51,6 +52,11 @@ class AlarmPlaybackService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val isTest = intent?.getBooleanExtra(EXTRA_TEST, false) == true
         val generation = ++requestGeneration
+        val feedback = intent?.getStringExtra(EXTRA_ACTION_FEEDBACK)
+        actionFeedback = !feedback.isNullOrBlank()
+        handler.removeCallbacksAndMessages(null)
+        textToSpeech?.stop()
+        ringtone?.stop()
         val initialEventIds = intent?.getLongArrayExtra(EXTRA_EVENT_IDS) ?: longArrayOf()
         val initialNames = intent?.getStringArrayExtra(EXTRA_MEDICATION_NAMES)?.toList().orEmpty()
         val initialMessage = intent?.getStringExtra(EXTRA_INITIAL_MESSAGE).orEmpty()
@@ -67,7 +73,12 @@ class AlarmPlaybackService : Service() {
             repeatIntervalMillis = preferences.repeatIntervalSeconds * 1000L
             speechVolume = preferences.speechVolume
 
-            if (isTest) {
+            if (actionFeedback) {
+                activeVoiceStyle = null
+                speechText = feedback.orEmpty()
+                promoteToForeground(ReminderNotifications.confirmation(this@AlarmPlaybackService, speechText))
+                initializeSpeech(preferences.speechRate, preferences.speechPitch, generation)
+            } else if (isTest) {
                 activeVoiceStyle = null
                 speechText = ReminderSpeechComposer.testMessage(preferences.voiceStyle)
                 promoteToForeground(ReminderNotifications.test(this@AlarmPlaybackService, speechText))
@@ -82,14 +93,16 @@ class AlarmPlaybackService : Service() {
                     return@launch
                 }
                 activeVoiceStyle = preferences.voiceStyle
-                speechText = composeReminderSpeech(occurrences, preferences.voiceStyle)
+                val message = composeReminderSpeech(occurrences, preferences.voiceStyle)
+                if (generation != requestGeneration || stopped) return@launch
+                speechText = message
                 promoteToForeground(
                     ReminderNotifications.reminder(this@AlarmPlaybackService, occurrences, speechText)
                 )
                 initializeSpeech(preferences.speechRate, preferences.speechPitch, generation)
             }
         }
-        return START_REDELIVER_INTENT
+        return if (actionFeedback) START_NOT_STICKY else START_REDELIVER_INTENT
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -164,7 +177,12 @@ class AlarmPlaybackService : Service() {
                 override fun onStart(utteranceId: String?) = Unit
 
                 override fun onDone(utteranceId: String?) {
-                    handler.postDelayed({ speak(generation) }, repeatIntervalMillis)
+                    handler.post {
+                        if (generation == requestGeneration && !stopped) {
+                            if (actionFeedback) finishFeedback(generation)
+                            else handler.postDelayed({ speak(generation) }, repeatIntervalMillis)
+                        }
+                    }
                 }
 
                 @Deprecated("Deprecated by Android")
@@ -195,7 +213,9 @@ class AlarmPlaybackService : Service() {
                 stopPlaybackAndSelf()
                 return@launch
             }
-            speechText = composeReminderSpeech(occurrences, style)
+            val message = composeReminderSpeech(occurrences, style)
+            if (generation != requestGeneration || stopped) return@launch
+            speechText = message
             promoteToForeground(
                 ReminderNotifications.reminder(this@AlarmPlaybackService, occurrences, speechText)
             )
@@ -231,11 +251,26 @@ class AlarmPlaybackService : Service() {
             params,
             UTTERANCE_ID,
         )
+        if (actionFeedback) handler.postDelayed({ finishFeedback(generation) }, 15_000L)
         if (result == TextToSpeech.ERROR) startFallbackRingtone(generation)
+    }
+
+    private fun finishFeedback(generation: Long) {
+        if (generation != requestGeneration || stopped || !actionFeedback) return
+        actionFeedback = false
+        ++requestGeneration
+        handler.removeCallbacksAndMessages(null)
+        textToSpeech?.stop()
+        // Refresh will resume any other ringing medicines, or stop the service.
+        refresh(this)
     }
 
     private fun startFallbackRingtone(generation: Long) {
         if (generation != requestGeneration || stopped || ringtone?.isPlaying == true) return
+        if (actionFeedback) {
+            finishFeedback(generation)
+            return
+        }
         textToSpeech?.stop()
         val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
@@ -290,6 +325,7 @@ class AlarmPlaybackService : Service() {
         private const val EXTRA_TEST = "test"
         private const val EXTRA_MEDICATION_NAMES = "medication_names"
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
+        private const val EXTRA_ACTION_FEEDBACK = "action_feedback"
         private const val ACTION_START = "com.example.medicationreminder.action.START_PLAYBACK"
         const val CHANNEL_ID = ReminderNotifications.VOICE_CHANNEL_ID
         private const val UTTERANCE_ID = "medication-reminder"
@@ -325,6 +361,13 @@ class AlarmPlaybackService : Service() {
 
         fun stop(context: Context) {
             context.stopService(Intent(context, AlarmPlaybackService::class.java))
+        }
+
+        fun confirmAction(context: Context, message: String) {
+            ContextCompat.startForegroundService(context, Intent(context, AlarmPlaybackService::class.java).apply {
+                action = ACTION_START
+                putExtra(EXTRA_ACTION_FEEDBACK, message)
+            })
         }
 
         fun refresh(context: Context) {

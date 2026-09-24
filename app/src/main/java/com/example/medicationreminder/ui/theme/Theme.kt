@@ -1,6 +1,7 @@
 package com.example.medicationreminder.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
@@ -17,7 +18,7 @@ import androidx.compose.ui.unit.sp
 val BrandTerracotta = Color(0xFFC45B43)
 val BrandTerracottaDeep = Color(0xFF813D31)
 val BrandSage = Color(0xFF48685D)
-val BrandSageDeep = Color(0xFF183B35)
+val BrandSageDeep = Color(0xFF153C65)
 val BrandInk = Color(0xFF202824)
 val BrandMuted = Color(0xFF59635D)
 val BrandPearl = Color(0xFFF7F5F1)
@@ -26,10 +27,10 @@ val BrandLine = Color(0xFFE5E2DC)
 val BrandAmber = Color(0xFFB66A16)
 
 private val LightColors = lightColorScheme(
-    primary = BrandTerracottaDeep,
+    primary = Color(0xFF285F95),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFF7DED6),
-    onPrimaryContainer = Color(0xFF4E2118),
+    primaryContainer = Color(0xFFDCEBFA),
+    onPrimaryContainer = Color(0xFF153C65),
     secondary = BrandSage,
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFDDE9E3),
@@ -65,11 +66,11 @@ private val DarkColors = darkColorScheme(
     onTertiary = Color(0xFF3C2F0C),
     tertiaryContainer = Color(0xFF554619),
     onTertiaryContainer = Color(0xFFF7DEA8),
-    background = Color(0xFF111714),
+    background = Color(0xFF0C1930),
     onBackground = Color(0xFFE2EAE5),
-    surface = Color(0xFF18201C),
+    surface = Color(0xFF192A43),
     onSurface = Color(0xFFE2EAE5),
-    surfaceVariant = Color(0xFF29322E),
+    surfaceVariant = Color(0xFF293C55),
     onSurfaceVariant = Color(0xFFBCC6C0),
     outline = Color(0xFF87918B),
     outlineVariant = Color(0xFF3E4944),
@@ -175,13 +176,13 @@ private val PremiumTypography = Typography(
 
 @Composable
 fun MedicationReminderTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
         typography = PremiumTypography,
         shapes = PremiumShapes,
-        content = content,
+        content = { SkyBackdrop(darkTheme, content) },
     )
 }

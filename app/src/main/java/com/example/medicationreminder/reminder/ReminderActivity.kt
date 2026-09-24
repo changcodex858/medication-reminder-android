@@ -90,7 +90,6 @@ class ReminderActivity : ComponentActivity() {
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 LaunchedEffect(state.completed) {
                     if (state.completed) {
-                        AlarmPlaybackService.refresh(this@ReminderActivity)
                         finish()
                     }
                 }
@@ -129,15 +128,6 @@ private fun ReminderAlarmScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.secondaryContainer,
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background,
-                    )
-                )
-            )
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().safeDrawingPadding(),
@@ -235,7 +225,7 @@ private fun ReminderAlarmScreen(
                 items(state.occurrences, key = { it.eventId }) { occurrence ->
                     ReminderCard(
                         item = occurrence,
-                        isSubmitting = occurrence.eventId in state.resolvingIds,
+                        isSubmitting = state.resolvingIds.isNotEmpty(),
                         onTaken = onTaken,
                         onSnooze = onSnooze,
                         onSkipped = onSkipped,
@@ -380,6 +370,12 @@ private fun ReminderCard(
                     }
                 }
             }
+            SwipeDoseControl(
+                enabled = !isSubmitting,
+                medicationName = item.medicationName,
+                onTaken = { onTaken(item.eventId) },
+                onSnooze = { onSnooze(item.eventId) },
+            )
             ReminderTakenButton(
                 item = item,
                 spokenDose = spokenDose,
