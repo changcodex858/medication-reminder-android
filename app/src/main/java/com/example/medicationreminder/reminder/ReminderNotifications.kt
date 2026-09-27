@@ -63,12 +63,14 @@ object ReminderNotifications {
         occurrences: List<DoseOccurrence>,
         message: String,
         useFallbackChannel: Boolean = false,
+        alert: Boolean = false,
     ): Notification = reminder(
         context = context,
         eventIds = occurrences.map { it.eventId }.toLongArray(),
         medicationNames = occurrences.map { it.medicationName },
         message = message,
         useFallbackChannel = useFallbackChannel,
+        alert = alert,
     )
 
     fun reminder(
@@ -77,6 +79,7 @@ object ReminderNotifications {
         medicationNames: List<String>,
         message: String,
         useFallbackChannel: Boolean = false,
+        alert: Boolean = false,
     ): Notification {
         val title = when {
             useFallbackChannel -> "用药提醒：请打开应用确认"
@@ -87,6 +90,7 @@ object ReminderNotifications {
             context,
             8100,
             Intent(context, ReminderActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .putExtra(AlarmPlaybackService.EXTRA_EVENT_IDS, eventIds),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -97,7 +101,7 @@ object ReminderNotifications {
             title = title,
             message = message,
         )
-            .setOnlyAlertOnce(!useFallbackChannel)
+            .setOnlyAlertOnce(!alert)
             .setContentIntent(contentIntent)
             .setFullScreenIntent(contentIntent, true)
             .addAction(0, "全部已服", actionIntent(context, ReminderActionReceiver.ACTION_TAKEN, eventIds, 8101))
@@ -106,7 +110,7 @@ object ReminderNotifications {
             .build()
     }
 
-    fun test(context: Context, message: String): Notification {
+    fun test(context: Context, message: String, lockScreen: Boolean = false, alert: Boolean = false): Notification {
         val stopIntent = PendingIntent.getBroadcast(
             context,
             8201,
@@ -118,11 +122,16 @@ object ReminderNotifications {
         val contentIntent = PendingIntent.getActivity(
             context,
             8200,
-            Intent(context, MainActivity::class.java),
+            if (lockScreen) Intent(context, ReminderActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(ReminderActivity.EXTRA_LOCK_SCREEN_TEST, true)
+            else Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        return baseBuilder(context, VOICE_CHANNEL_ID, "语音风格试听", message)
+        return baseBuilder(context, VOICE_CHANNEL_ID, if (lockScreen) "锁屏滑动测试" else "语音风格试听", message)
             .setContentIntent(contentIntent)
+            .setOnlyAlertOnce(!alert)
+            .setFullScreenIntent(if (lockScreen) contentIntent else null, true)
             .addAction(0, "停止试听", stopIntent)
             .build()
     }
@@ -151,7 +160,7 @@ object ReminderNotifications {
         if (channel?.importance == NotificationManager.IMPORTANCE_NONE) return false
         NotificationManagerCompat.from(context).notify(
             NOTIFICATION_ID,
-            reminder(context, occurrences, message, useFallbackChannel = true),
+            reminder(context, occurrences, message, useFallbackChannel = true, alert = true),
         )
         return true
     }

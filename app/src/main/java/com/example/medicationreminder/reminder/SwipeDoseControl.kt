@@ -42,11 +42,13 @@ fun SwipeDoseControl(
     medicationName: String,
     onTaken: () -> Unit,
     onSnooze: () -> Unit,
+    lockScreenMode: Boolean = false,
+    compact: Boolean = false,
 ) {
     var drag by remember { mutableFloatStateOf(0f) }
     var holding by remember { mutableStateOf(false) }
-    val threshold = with(LocalDensity.current) { 65.dp.toPx() }
-    val limit = with(LocalDensity.current) { 85.dp.toPx() }
+    val threshold = with(LocalDensity.current) { (if (compact) 45.dp else 65.dp).toPx() }
+    val limit = with(LocalDensity.current) { (if (compact) 60.dp else 85.dp).toPx() }
     val feedback = LocalHapticFeedback.current
     val taken by rememberUpdatedState(onTaken)
     val snooze by rememberUpdatedState(onSnooze)
@@ -61,19 +63,20 @@ fun SwipeDoseControl(
         if (action != null) feedback.performHapticFeedback(HapticFeedbackType.LongPress)
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text("按住圆球，上下滑动后松手", style = MaterialTheme.typography.labelLarge)
+        Text("按住圆球，上下滑动后松手", style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface)
         Box(
-            Modifier.fillMaxWidth().height(280.dp),
+            Modifier.fillMaxWidth().height(if (compact) 210.dp else 280.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Box(Modifier.width(100.dp).height(260.dp)
+            Box(Modifier.width(100.dp).height(if (compact) 200.dp else 260.dp)
                 .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f), RoundedCornerShape(60.dp)))
             Text("↑  已经服用", Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
                 color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
             Text("↓  稍后提醒", Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
                 color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
             Box(
-                modifier = Modifier.size(86.dp)
+                modifier = Modifier.size(if (compact) 72.dp else 86.dp)
                     .graphicsLayer { translationY = position; shadowElevation = 12.dp.toPx(); shape = CircleShape; clip = false }
                     .background(Brush.linearGradient(listOf(accent.copy(alpha = 0.72f), accent)), CircleShape)
                     .border(3.dp, Color.White.copy(alpha = 0.65f), CircleShape)
@@ -84,7 +87,7 @@ fun SwipeDoseControl(
                             CustomAccessibilityAction("稍后提醒") { snooze(); true },
                         )
                     }
-                    .pointerInput(enabled) {
+                    .pointerInput(enabled, threshold, limit) {
                         if (enabled) detectDragGesturesAfterLongPress(
                             onDragStart = { holding = true; feedback.performHapticFeedback(HapticFeedbackType.LongPress) },
                             onDragCancel = { drag = 0f; holding = false },
@@ -116,6 +119,7 @@ fun SwipeDoseControl(
             action == SwipeDoseAction.TAKEN -> "松手确认：已经服用"
             action == SwipeDoseAction.SNOOZE -> "松手确认：稍后提醒"
             holding -> "继续向上或向下滑动"
+            lockScreenMode -> "无需解锁 · 服用后再上滑确认"
             else -> "服用后再上滑确认，也可以使用下方按钮"
         }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

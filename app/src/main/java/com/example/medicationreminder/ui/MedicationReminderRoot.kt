@@ -2254,7 +2254,7 @@ private fun SettingsScreen(
             HealthRow(
                 title = "提醒通知通道",
                 ready = health.alarmChannelAllowed,
-                detail = "通道被关闭时，提醒界面和操作按钮可能不可见",
+                detail = "请允许锁屏显示、悬浮通知，并设为高优先级，才能请求全屏提醒",
                 actionLabel = if (health.alarmChannelAllowed) null else "设置",
                 onAction = {
                     context.openSystemSettings(
@@ -2269,7 +2269,7 @@ private fun SettingsScreen(
             HealthRow(
                 title = "锁屏全屏提醒",
                 ready = health.fullScreenAllowed,
-                detail = "不可用时仍会显示高优先级通知并播放语音",
+                detail = "允许后，到点可在手机仍锁屏时显示来电式滑动界面；未允许时只能显示通知",
                 actionLabel = if (health.fullScreenAllowed || Build.VERSION.SDK_INT < 34) null else "设置",
                 onAction = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -2321,7 +2321,7 @@ private fun SettingsScreen(
                 Icon(if (health.exactAlarmsAllowed) Icons.Default.AccessTime else Icons.Default.WarningAmber, null)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    if (health.exactAlarmsAllowed) "30 秒后台真实提醒测试"
+                    if (health.exactAlarmsAllowed) "30 秒后锁屏滑动测试"
                     else "先开启精确闹钟权限"
                 )
             }
@@ -2346,6 +2346,8 @@ private fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("退出后的提醒说明", fontWeight = FontWeight.Bold)
+                    Text("• 要像接听电话一样操作，请开启锁屏全屏提醒，再点击上方测试并按电源键锁屏。操作结束后关闭提醒界面，手机仍保持锁定。")
+                    Text("• 部分手机还需要在应用权限中允许“锁屏显示”“后台弹出界面”；若测试仅听到声音，请检查这些权限。")
                     Text("• 设备检查通过且应用未被系统强行停止时，返回桌面、划掉最近任务或进程被回收后，已设置的闹钟仍会保留。")
                     Text("• 在系统设置中点“强行停止”会取消闹钟，任何应用都无法绕过；重新打开本应用即可恢复。")
                 }

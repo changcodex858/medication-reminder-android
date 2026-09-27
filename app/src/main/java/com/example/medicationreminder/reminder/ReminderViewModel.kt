@@ -24,17 +24,23 @@ data class ReminderUiState(
 )
 
 class ReminderViewModel(
-    private val eventIds: List<Long>,
+    private var eventIds: List<Long>,
     private val repository: MedicationRepository,
     private val preferencesRepository: PreferencesRepository,
     private val coordinator: AlarmCoordinator,
     private val applicationContext: Context,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ReminderUiState())
+    private var reloadGeneration = 0L
     val state: StateFlow<ReminderUiState> = _state.asStateFlow()
 
     init {
         reload()
+    }
+
+    fun updateEventIds(ids: List<Long>) {
+        eventIds = (eventIds + ids).distinct()
+        if (_state.value.resolvingIds.isEmpty()) reload()
     }
 
     fun markTaken(id: Long) = resolve(id) {
@@ -78,27 +84,24 @@ class ReminderViewModel(
                     if (changed) AlarmPlaybackService.confirmAction(applicationContext, feedback.orEmpty())
                     else AlarmPlaybackService.refresh(applicationContext)
                 }
-                if (changed) {
-                    _state.update { old ->
-                        val remaining = old.occurrences.filterNot { it.eventId == id }
-                        old.copy(
-                            occurrences = remaining,
-                            completed = remaining.isEmpty(),
-                            resolvingIds = old.resolvingIds - id,
-                            errorMessage = errorMessage,
-                        )
-                    }
-                } else {
-                    reload(errorMessage)
-                }
+                // A new alarm may have arrived while this action was being saved.
+                // Reload the combined IDs before deciding whether the lock screen can close.
+                reload(errorMessage)
             }
         }
     }
 
     private fun reload(errorMessage: String? = null) {
+        val generation = ++reloadGeneration
         viewModelScope.launch {
-            val occurrences = repository.getOccurrences(eventIds)
+            val requestedIds = eventIds
+            val occurrences = repository.getOccurrences(requestedIds)
                 .filter { it.status.name == "RINGING" }
+            if (generation != reloadGeneration) return@launch
+            if (requestedIds != eventIds) {
+                reload(errorMessage)
+                return@launch
+            }
             _state.value = ReminderUiState(
                 loading = false,
                 occurrences = occurrences,

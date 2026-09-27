@@ -51,6 +51,7 @@ class AlarmPlaybackService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val isTest = intent?.getBooleanExtra(EXTRA_TEST, false) == true
+        val lockScreenTest = intent?.getBooleanExtra(ReminderActivity.EXTRA_LOCK_SCREEN_TEST, false) == true
         val generation = ++requestGeneration
         val feedback = intent?.getStringExtra(EXTRA_ACTION_FEEDBACK)
         actionFeedback = !feedback.isNullOrBlank()
@@ -60,8 +61,10 @@ class AlarmPlaybackService : Service() {
         val initialEventIds = intent?.getLongArrayExtra(EXTRA_EVENT_IDS) ?: longArrayOf()
         val initialNames = intent?.getStringArrayExtra(EXTRA_MEDICATION_NAMES)?.toList().orEmpty()
         val initialMessage = intent?.getStringExtra(EXTRA_INITIAL_MESSAGE).orEmpty()
-        val initialNotification = if (!isTest && initialEventIds.isNotEmpty() && initialMessage.isNotBlank()) {
-            ReminderNotifications.reminder(this, initialEventIds, initialNames, initialMessage)
+        val initialNotification = if (isTest && lockScreenTest) {
+            ReminderNotifications.test(this, "锁屏测试：上滑确认，下滑稍后；不会记录真实用药。", lockScreen = true, alert = true)
+        } else if (!isTest && initialEventIds.isNotEmpty() && initialMessage.isNotBlank()) {
+            ReminderNotifications.reminder(this, initialEventIds, initialNames, initialMessage, alert = true)
         } else {
             ReminderNotifications.loading(this, isTest)
         }
@@ -80,8 +83,9 @@ class AlarmPlaybackService : Service() {
                 initializeSpeech(preferences.speechRate, preferences.speechPitch, generation)
             } else if (isTest) {
                 activeVoiceStyle = null
-                speechText = ReminderSpeechComposer.testMessage(preferences.voiceStyle)
-                promoteToForeground(ReminderNotifications.test(this@AlarmPlaybackService, speechText))
+                speechText = if (lockScreenTest) "这是锁屏滑动测试。请按住圆球，上滑确认，下滑稍后提醒。测试不会记录真实用药。"
+                    else ReminderSpeechComposer.testMessage(preferences.voiceStyle)
+                promoteToForeground(ReminderNotifications.test(this@AlarmPlaybackService, speechText, lockScreen = lockScreenTest))
                 initializeSpeech(preferences.speechRate, preferences.speechPitch, generation)
             } else {
                 // Always aggregate every currently ringing dose. This keeps overlapping
@@ -351,10 +355,11 @@ class AlarmPlaybackService : Service() {
             ContextCompat.startForegroundService(context, intent)
         }
 
-        fun startTest(context: Context) {
+        fun startTest(context: Context, lockScreen: Boolean = false) {
             val intent = Intent(context, AlarmPlaybackService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_TEST, true)
+                putExtra(ReminderActivity.EXTRA_LOCK_SCREEN_TEST, lockScreen)
             }
             ContextCompat.startForegroundService(context, intent)
         }

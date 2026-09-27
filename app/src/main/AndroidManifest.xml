@@ -29,6 +29,10 @@
 
         <activity
             android:name=".reminder.ReminderActivity"
+            android:launchMode="singleTop"
+            android:taskAffinity="${applicationId}.alarm"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@style/Theme.MedicationReminder.Alarm" />

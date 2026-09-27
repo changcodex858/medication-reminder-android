@@ -9,5 +9,8 @@
 
     <style name="Theme.MedicationReminder.Alarm" parent="Theme.MedicationReminder">
         <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#071426</item>
+        <item name="android:navigationBarColor">#071426</item>
     </style>
 </resources>

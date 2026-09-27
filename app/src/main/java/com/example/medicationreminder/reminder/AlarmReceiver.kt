@@ -18,7 +18,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     if (graph.medicationRepository.hasRingingEvents()) {
                         AlarmPlaybackService.refresh(context)
                     } else if (intent.getBooleanExtra(EXTRA_ALLOW_VOICE, false)) {
-                        AlarmPlaybackService.startTest(context)
+                        AlarmPlaybackService.startTest(context, lockScreen = true)
                     }
                 } finally {
                     pendingResult.finish()

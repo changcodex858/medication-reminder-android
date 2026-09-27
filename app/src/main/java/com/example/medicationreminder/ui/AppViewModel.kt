@@ -168,9 +168,11 @@ class AppViewModel(
 
     fun scheduleTestReminder() {
         runCatching {
+            check(_health.value.notificationsAllowed && _health.value.alarmChannelAllowed) { "请先允许通知，并将提醒通知通道设为高优先级" }
+            check(_health.value.fullScreenAllowed) { "请先开启下方的锁屏全屏提醒权限，再进行锁屏滑动测试" }
             check(alarmCoordinator.scheduleTest()) { "请先开启“精确闹钟”权限" }
         }
-            .onSuccess { _message.value = "后台测试已设置：请锁屏或划掉应用，约 30 秒后提醒" }
+            .onSuccess { _message.value = "请现在按电源键锁屏，约 30 秒后出现滑动测试；无需解锁，不记录真实用药" }
             .onFailure { _message.value = it.message ?: "测试提醒设置失败" }
     }
 
@@ -225,7 +227,7 @@ class AppViewModel(
         val audioManager = app.getSystemService(AudioManager::class.java)
         val alarmChannelAllowed =
             notificationManager.getNotificationChannel(AlarmPlaybackService.CHANNEL_ID)?.importance
-                ?.let { it != NotificationManager.IMPORTANCE_NONE } == true
+                ?.let { it >= NotificationManager.IMPORTANCE_HIGH } == true
         _health.value = SystemHealth(
             notificationsAllowed = NotificationManagerCompat.from(app).areNotificationsEnabled(),
             alarmChannelAllowed = alarmChannelAllowed,
