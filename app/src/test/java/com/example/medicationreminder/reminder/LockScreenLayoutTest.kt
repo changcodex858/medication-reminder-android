@@ -43,7 +43,7 @@ class LockScreenLayoutTest {
         val file = File("build/reports/visual/lock-screen.png")
         requireNotNull(file.parentFile).mkdirs()
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        knob.performTouchInput { down(center); advanceEventTime(700); moveBy(androidx.compose.ui.geometry.Offset(0f, -150f)); up() }
+        knob.performTouchInput { down(center); moveBy(androidx.compose.ui.geometry.Offset(0f, -150f)); up() }
         compose.waitForIdle()
         assertEquals(1, taken)
     }

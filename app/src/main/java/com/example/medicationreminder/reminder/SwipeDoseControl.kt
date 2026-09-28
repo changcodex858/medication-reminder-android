@@ -1,9 +1,12 @@
 package com.example.medicationreminder.reminder
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,7 +55,11 @@ fun SwipeDoseControl(
     val feedback = LocalHapticFeedback.current
     val taken by rememberUpdatedState(onTaken)
     val snooze by rememberUpdatedState(onSnooze)
-    val position by animateFloatAsState(drag, label = "swipePosition")
+    val position by animateFloatAsState(
+        drag,
+        animationSpec = if (holding) snap() else spring(),
+        label = "swipePosition",
+    )
     val action = swipeDoseAction(drag, threshold)
     val accent = when (action) {
         SwipeDoseAction.TAKEN -> Color(0xFF28765E)
@@ -63,7 +70,7 @@ fun SwipeDoseControl(
         if (action != null) feedback.performHapticFeedback(HapticFeedbackType.LongPress)
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text("按住圆球，上下滑动后松手", style = MaterialTheme.typography.labelLarge,
+        Text("直接上下滑动圆球，松手确认", style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface)
         Box(
             Modifier.fillMaxWidth().height(if (compact) 210.dp else 280.dp),
@@ -88,10 +95,14 @@ fun SwipeDoseControl(
                         )
                     }
                     .pointerInput(enabled, threshold, limit) {
-                        if (enabled) detectDragGesturesAfterLongPress(
-                            onDragStart = { holding = true; feedback.performHapticFeedback(HapticFeedbackType.LongPress) },
+                        if (enabled) detectDragGestures(
+                            orientationLock = Orientation.Vertical,
+                            // The circle owns the gesture from touch-down. Confirmation still
+                            // requires reaching the action threshold and releasing the finger.
+                            shouldAwaitTouchSlop = { false },
+                            onDragStart = { _, _, _ -> holding = true; feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
                             onDragCancel = { drag = 0f; holding = false },
-                            onDragEnd = {
+                            onDragEnd = { _ ->
                                 val resolved = swipeDoseAction(drag, threshold)
                                 drag = 0f
                                 holding = false

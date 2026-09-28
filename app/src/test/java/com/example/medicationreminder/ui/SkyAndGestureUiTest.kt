@@ -29,7 +29,7 @@ import org.robolectric.annotation.GraphicsMode
 class SkyAndGestureUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun `long hold and release up or down invokes only the matching action`() {
+    @Test fun `immediate swipe up or down invokes only the matching action on release`() {
         var taken = 0
         var snoozed = 0
         compose.setContent {
@@ -40,25 +40,34 @@ class SkyAndGestureUiTest {
         val knob = compose.onNodeWithContentDescription("测试药品，按住上滑已经服用，下滑稍后提醒")
         knob.performTouchInput {
             down(center)
-            advanceEventTime(700)
             moveBy(Offset(0f, -160f))
-            up()
         }
+        compose.waitForIdle()
+        assertEquals(0, taken)
+        assertEquals(0, snoozed)
+        compose.onNodeWithText("松手确认：已经服用").assertIsDisplayed()
+        knob.performTouchInput { up() }
         compose.waitForIdle()
         assertEquals(1, taken)
         assertEquals(0, snoozed)
         knob.performTouchInput {
             down(center)
-            advanceEventTime(700)
             moveBy(Offset(0f, 160f))
             up()
         }
         compose.waitForIdle()
         assertEquals(1, taken)
         assertEquals(1, snoozed)
-        knob.performTouchInput { down(center); advanceEventTime(700); moveBy(Offset(0f, -160f)); cancel() }
+        knob.performTouchInput { down(center); moveBy(Offset(0f, -160f)); cancel() }
         compose.waitForIdle()
         assertEquals(1, taken)
+        assertEquals(1, snoozed)
+        knob.performTouchInput { click() }
+        knob.performTouchInput { down(center); moveBy(Offset(0f, -50f)); up() }
+        knob.performTouchInput { down(center); moveBy(Offset(120f, 0f)); up() }
+        compose.waitForIdle()
+        assertEquals(1, taken)
+        assertEquals(1, snoozed)
     }
 
     @Test fun `day and night covers render and zodiac selection updates`() {
